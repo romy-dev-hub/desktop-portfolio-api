@@ -106,7 +106,6 @@ app.listen(PORT, () => {
 const allowedOrigins = [
   'http://localhost:3000',
   'https://xiao-desktop-simulator-portfolio.vercel.app',
-  'https://your-custom-domain.vercel.app' // Add your actual Vercel URL
 ];
 
 app.use(cors({
