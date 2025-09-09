@@ -9,11 +9,30 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Allow both local development and production domains
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://xiao-desktop-simulator-portfolio.vercel.app',
+];
+
+// CORS Middleware - PUT THIS BEFORE YOUR ROUTES
 app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Other middleware
 app.use(express.json());
 
 // MongoDB Connection
@@ -101,25 +120,5 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-// Allow both local development and production domains
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://xiao-desktop-simulator-portfolio.vercel.app',
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true
-}));
 
 export default app;
