@@ -1,58 +1,51 @@
 import express from 'express';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
+
+// Load env first
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Better error handling for JSON parsing
-app.use(express.json({ limit: '10mb' }));
-
-// Add request logging
+// Manual CORS Middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://xiao-desktop-simulator-portfolio.vercel.app'
+  ];
+  
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   next();
 });
 
-// Basic health check
-app.get('/api/health', (req, res) => {
-  console.log('Health check received');
-  res.json({ 
-    status: 'Server is running!',
-    timestamp: new Date().toISOString(),
-    port: PORT
-  });
+app.use(express.json());
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI)
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.log('MongoDB connection error:', err));
+
+// ... rest of your routes and logic ...
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-// Start server with better error handling
-try {
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ Server successfully started on port ${PORT}`);
-    console.log(`✅ Health check available at: http://0.0.0.0:${PORT}/api/health`);
-  });
-
-  // Handle server errors
-  server.on('error', (error) => {
-    console.error('❌ Server error:', error);
-    if (error.code === 'EADDRINUSE') {
-      console.error(`Port ${PORT} is already in use`);
-    }
-  });
-
-} catch (error) {
-  console.error('❌ Failed to start server:', error);
-  process.exit(1);
-}
+// Remove export default if not needed
+// export default app;
