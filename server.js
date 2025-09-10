@@ -1,40 +1,58 @@
 import express from 'express';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Basic CORS
+// Better error handling for JSON parsing
+app.use(express.json({ limit: '10mb' }));
+
+// Add request logging
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
-
-app.use(express.json());
 
 // Basic health check
 app.get('/api/health', (req, res) => {
   console.log('Health check received');
-  res.json({ status: 'Server is running!' });
+  res.json({ 
+    status: 'Server is running!',
+    timestamp: new Date().toISOString(),
+    port: PORT
+  });
 });
 
-// Simple test endpoint
-app.post('/api/test', (req, res) => {
-  console.log('Test endpoint called:', req.body);
-  res.json({ message: 'Test successful!', data: req.body });
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
 });
 
-export default app;
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Start server with better error handling
+try {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Server successfully started on port ${PORT}`);
+    console.log(`✅ Health check available at: http://0.0.0.0:${PORT}/api/health`);
+  });
+
+  // Handle server errors
+  server.on('error', (error) => {
+    console.error('❌ Server error:', error);
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use`);
+    }
+  });
+
+} catch (error) {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
+}
